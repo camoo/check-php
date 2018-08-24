@@ -3,7 +3,7 @@ check-php is a fast PHP synthax checker for developers
 # Installation:
 - clone the repo
 
-`sudo cp -p chech-php /usr/local/bin/check-php`
+`sudo cp -p check-php /usr/local/bin/check-php`
 
 # Usage : check-php
 
