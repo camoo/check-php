@@ -1,0 +1,104 @@
+#!/bin/bash
+PHP=`sudo which php`
+GIT=`sudo which git`
+GREP=`which grep`
+USER_SRC=`pwd`
+FORCE="N"
+
+usage ()
+{
+  echo #
+    echo "Usage : check-php"
+    echo #
+    echo "SYNOPSIS"
+    echo "    check-php [--help| -h] [-s <DIR>] [-g <Yy|Nn>] [--force | -f]"
+    echo #
+
+    echo "DESCRIPTION"
+    echo "    check-php is a fast PHP synthax checker for developers"
+    echo "    Calling this without paramter will Check all PHP-files modified between now and 1 day ago"
+    echo #
+    echo 'OPTIONS'
+    echo '-f | --force'
+    echo '    ignore nonexistent directory, never prompt'
+    echo '--help | -h'
+    echo '    Prints the synopsis and a list of the most commonly used commands.'
+    echo '-s | --sub-dir <DIR>'
+    echo '    Run as if check-php was started in <DIR> instead of the wohle project directory.'
+    echo '-g | --git-modified <Yy|Nn>'
+    echo '    Check Only PHP-files modified in GIT if the value is yes (y|Y)'
+
+    exit
+}
+getPHPVersion()
+{
+  echo $(sudo $PHP -v | grep cli |grep --only-matching --perl-regexp "^PHP \d\.\\d+\.\\d+" | awk '{print $2}')
+}
+
+for h in ${@}
+do
+  if [ "$h" = "-h" -o "$h" = "--help" ]; then
+    usage
+    exit 0
+  fi
+  if [ "$h" = "-f" -o "$h" = "--force" ]; then
+    FORCE="Y"
+  fi
+ done
+
+while [[ $# -gt 1 ]]
+  do
+    key="$1"
+    case $key in
+       -s|--sub-dir)
+       SUB_DIR="$2"
+       shift # past argument
+       ;;
+       -g|--git-modified)
+       MODIFIED="$2"
+       shift # past argument
+       ;;
+      *)
+      # unknown option
+    ;;
+    esac
+    shift # past argument or value
+  done
+
+if [ -z "$SUB_DIR" -a "$FORCE" = "N" ]; then
+  echo "To check just for specificaly folder, use: -s <DIR> | --sub-dir <DIR>"
+  read -p "Do you really want to check it for the 'WHOLE SYSTEM'? (Y/N):" -n 1 -r
+  echo    # (optional) move to a new line
+    if [[ ! $REPLY =~ ^[Nn]$ ]]
+      then
+      SUB_DIR=""
+    else
+      echo "Aborted..."
+      exit 0
+    fi
+fi
+
+if [[ ! $SUB_DIR == \/* ]]; then
+  SUB_DIR="/${SUB_DIR}"
+fi
+
+SRC=${USER_SRC}${SUB_DIR}
+
+if [ ! -d "${SRC}" ]; then
+ echo "\"${SRC}\" No such file or directory ..."
+  exit 0
+fi
+
+ echo "Check PHP $(getPHPVersion) synthax in \"${SRC}\" ..."
+  cd ${SRC}
+  if [[ "$MODIFIED" =~ ^[Yy]$ ]]; then
+      echo "Check Only PHP-files modified in GIT ..."
+        for i in $($GIT status -s | awk '{if ($1 == "M") print $2}' | $GREP "\.php$"); do
+          $PHP -l ${i}
+        done
+  else
+    echo "Check all PHP-files modified between now and 1 day ago ..."
+    find . -type f -name '*.php' -mtime -1 -exec $PHP -l {} \; > /dev/null
+  fi
+ echo "[DONE]"
+ exit 0
